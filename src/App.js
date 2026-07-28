@@ -1,7 +1,8 @@
-import "@/App.css";
+import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
-import BillScanner from "@/pages/BillScanner";
+import BillScanner from "./pages/BillScanner";
+
 
 function App() {
     return (

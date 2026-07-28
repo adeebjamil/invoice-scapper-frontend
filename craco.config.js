@@ -8,10 +8,13 @@ module.exports = {
   },
   style: {
     postcss: {
-      plugins: [
-        require('tailwindcss'),
-        require('autoprefixer'),
-      ],
+      loaderOptions: (postcssLoaderOptions) => {
+        postcssLoaderOptions.postcssOptions.plugins = [
+          require('tailwindcss'),
+          require('autoprefixer'),
+        ];
+        return postcssLoaderOptions;
+      },
     },
   },
 };
