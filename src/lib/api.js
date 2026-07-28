@@ -31,3 +31,23 @@ export async function downloadExcel({ columns, rows, filename }) {
     a.remove();
     window.URL.revokeObjectURL(url);
 }
+
+export async function getHistory() {
+    const res = await axios.get(`${API}/history`);
+    return res.data;
+}
+
+export async function deleteHistoryItem(id) {
+    const res = await axios.delete(`${API}/history/${id}`);
+    return res.data;
+}
+
+export async function deleteHistoryBulk(ids) {
+    const res = await axios.delete(`${API}/history`, { data: { ids } });
+    return res.data;
+}
+
+export async function clearAllHistory() {
+    const res = await axios.delete(`${API}/history`);
+    return res.data;
+}
