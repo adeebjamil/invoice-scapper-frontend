@@ -1,0 +1,148 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-alt: #f4f4f5;
+    --text-primary: #09090b;
+    --text-secondary: #52525b;
+    --border: #e4e4e7;
+    --accent: #e6ff00;
+    --error: #ff2a00;
+    --success: #00e676;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 98%;
+        --foreground: 240 6% 5%;
+        --card: 0 0% 100%;
+        --card-foreground: 240 6% 5%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 240 6% 5%;
+        --primary: 240 6% 5%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 240 5% 96%;
+        --secondary-foreground: 240 6% 5%;
+        --muted: 240 5% 96%;
+        --muted-foreground: 240 4% 36%;
+        --accent: 240 5% 96%;
+        --accent-foreground: 240 6% 5%;
+        --destructive: 8 100% 50%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 240 6% 90%;
+        --input: 240 6% 90%;
+        --ring: 240 6% 5%;
+        --radius: 0.125rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    html,
+    body,
+    #root {
+        height: 100%;
+    }
+
+    body {
+        margin: 0;
+        font-family:
+            "IBM Plex Sans",
+            system-ui,
+            -apple-system,
+            sans-serif;
+        background: var(--bg);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-image:
+            radial-gradient(circle at 1px 1px,
+                rgba(9, 9, 11, 0.04) 1px,
+                transparent 0);
+        background-size: 24px 24px;
+    }
+}
+
+.font-display {
+    font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+    letter-spacing: -0.03em;
+}
+
+.font-mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.label-eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-secondary);
+}
+
+/* Scanning laser animation for document processing */
+@keyframes scan {
+    0% {
+        transform: translateY(0%);
+    }
+
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+.scan-laser {
+    animation: scan 1.8s ease-in-out infinite alternate;
+    background: linear-gradient(180deg,
+            transparent,
+            rgba(230, 255, 0, 0.9),
+            transparent);
+    box-shadow: 0 0 24px rgba(230, 255, 0, 0.6);
+}
+
+/* Sharp focused input inside table */
+.cell-input {
+    background: transparent;
+    border: 1px solid transparent;
+    outline: none;
+    padding: 8px 10px;
+    width: 100%;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: #09090b;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+.cell-input:focus {
+    background: #e6ff00;
+    border: 1px solid #09090b;
+    color: #09090b;
+}
+
+.cell-input:hover:not(:focus) {
+    background: #f4f4f5;
+}
+
+.dashed-zone {
+    background-image: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 12px,
+            rgba(9, 9, 11, 0.03) 12px,
+            rgba(9, 9, 11, 0.03) 24px);
+}
+
+/* RTL-friendly cell */
+[dir="rtl"] .cell-input {
+    text-align: right;
+}
