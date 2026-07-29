@@ -56,16 +56,22 @@ export default function BillScanner() {
                 );
             } else {
                 toast.success(
-                    `Extracted ${data.rows?.length || 0} rows from bill.`,
+                    `Extracted ${data.rows?.length || 0} rows · ${data.columns?.length || 0} columns`,
                 );
             }
         } catch (e) {
             console.error(e);
-            const msg =
-                e?.response?.data?.detail ||
-                e?.message ||
-                "Extraction failed. Please try again.";
-            toast.error(String(msg));
+            const detail = e?.response?.data?.detail || e?.message || "Extraction failed.";
+            const status = e?.response?.status;
+            
+            let msg = String(detail);
+            if (status === 500 && msg.includes("OPENROUTER_API_KEY")) {
+                msg = "⚠️ No API key configured. Add your free OpenRouter key to backend/.env as OPENROUTER_API_KEY";
+            } else if (status === 502) {
+                msg = "All AI models failed. Check your OpenRouter API key or try again.";
+            }
+            
+            toast.error(msg, { duration: 8000 });
             setState(STATES.ERROR);
         }
     };
