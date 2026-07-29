@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import { FileText, History as HistoryIcon } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
@@ -16,6 +16,54 @@ const STATES = {
     ERROR: "error",
 };
 
+// Progress stages with timing weights (total ~45s estimated)
+const PROGRESS_STAGES = [
+    { at: 0,  label: "Uploading file ..."              },
+    { at: 8,  label: "Reading document ..."            },
+    { at: 20, label: "Detecting language & layout ..." },
+    { at: 38, label: "Extracting table rows ..."       },
+    { at: 60, label: "Parsing JSON response ..."       },
+    { at: 78, label: "Validating data ..."             },
+    { at: 90, label: "Almost done ..."                 },
+    { at: 97, label: "Finalising ..."                  },
+];
+
+function useProgressSimulator(active) {
+    const [progress, setProgress] = useState(0);
+    const intervalRef = useRef(null);
+    const startTimeRef = useRef(null);
+
+    useEffect(() => {
+        if (!active) {
+            setProgress(0);
+            clearInterval(intervalRef.current);
+            return;
+        }
+        setProgress(0);
+        startTimeRef.current = Date.now();
+
+        // Simulate realistic progress: fast start, slow near 95
+        intervalRef.current = setInterval(() => {
+            setProgress((prev) => {
+                if (prev >= 95) return prev;
+                // Slow down as we approach 95
+                const increment = prev < 40 ? 1.2 : prev < 70 ? 0.7 : 0.25;
+                return Math.min(95, prev + increment);
+            });
+        }, 400);
+
+        return () => clearInterval(intervalRef.current);
+    }, [active]);
+
+    // Jump to 100 when done — caller sets active=false then calls complete()
+    const complete = () => {
+        clearInterval(intervalRef.current);
+        setProgress(100);
+    };
+
+    return { progress: Math.round(progress), complete };
+}
+
 export default function BillScanner() {
     const [state, setState] = useState(STATES.IDLE);
     const [file, setFile] = useState(null);
@@ -26,13 +74,40 @@ export default function BillScanner() {
     const [historyItem, setHistoryItem] = useState(null);
     const [cameraOpen, setCameraOpen] = useState(false);
     const [downloading, setDownloading] = useState(false);
-    const [activeTab, setActiveTab] = useState("preview"); // "preview" | "history"
+    const [activeTab, setActiveTab] = useState("preview");
+    const [elapsedSec, setElapsedSec] = useState(0);
+    const timerRef = useRef(null);
 
+    const isProcessing = state === STATES.PROCESSING;
+    const { progress, complete } = useProgressSimulator(isProcessing);
+
+    // Elapsed-time counter
     useEffect(() => {
-        if (!file) {
-            setPreviewUrl(null);
+        if (!isProcessing) {
+            clearInterval(timerRef.current);
+            setElapsedSec(0);
             return;
         }
+        setElapsedSec(0);
+        timerRef.current = setInterval(() => {
+            setElapsedSec((s) => s + 1);
+        }, 1000);
+        return () => clearInterval(timerRef.current);
+    }, [isProcessing]);
+
+    // Estimated time remaining (rough: assume ~45s total)
+    const estTotal = 45;
+    const estRemaining = progress < 100
+        ? Math.max(0, Math.round((estTotal * (100 - progress)) / 100))
+        : 0;
+
+    // Current stage label
+    const stageLabel = [...PROGRESS_STAGES]
+        .reverse()
+        .find((s) => progress >= s.at)?.label ?? "Initialising ...";
+
+    useEffect(() => {
+        if (!file) { setPreviewUrl(null); return; }
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
         return () => URL.revokeObjectURL(url);
@@ -46,31 +121,28 @@ export default function BillScanner() {
         setMeta({});
         try {
             const data = await extractBill(f);
+            complete();
+            // Small delay so user sees 100%
+            await new Promise((r) => setTimeout(r, 400));
             setColumns(data.columns || []);
             setRows(data.rows || []);
             setMeta(data.meta || {});
             setState(STATES.READY);
             if ((data.columns || []).length === 0) {
-                toast.warning(
-                    "No table detected. Try a clearer photo or a PDF.",
-                );
+                toast.warning("No table detected. Try a clearer photo or a PDF.");
             } else {
-                toast.success(
-                    `Extracted ${data.rows?.length || 0} rows · ${data.columns?.length || 0} columns`,
-                );
+                toast.success(`Extracted ${data.rows?.length || 0} rows · ${data.columns?.length || 0} columns`);
             }
         } catch (e) {
             console.error(e);
             const detail = e?.response?.data?.detail || e?.message || "Extraction failed.";
             const status = e?.response?.status;
-            
             let msg = String(detail);
             if (status === 500 && msg.includes("OPENROUTER_API_KEY")) {
                 msg = "⚠️ No API key configured. Add your free OpenRouter key to backend/.env as OPENROUTER_API_KEY";
             } else if (status === 502) {
                 msg = "All AI models failed. Check your OpenRouter API key or try again.";
             }
-            
             toast.error(msg, { duration: 8000 });
             setState(STATES.ERROR);
         }
@@ -240,8 +312,34 @@ export default function BillScanner() {
                                     take a few seconds. You&apos;ll see the
                                     editable grid the moment it&apos;s ready.
                                 </div>
-                                <div className="mt-2 h-1 w-48 sm:w-64 overflow-hidden border border-black bg-white">
-                                    <div className="h-full w-1/2 animate-pulse bg-[#E6FF00]" />
+
+                                {/* ── Progress Bar + Stats ── */}
+                                <div className="mt-2 w-full max-w-sm space-y-3">
+                                    {/* Bar + Percentage side by side */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative flex-1 h-1.5 overflow-hidden border border-black bg-white">
+                                            <div
+                                                className="h-full bg-[#E6FF00] transition-all duration-500 ease-out"
+                                                style={{ width: `${progress}%` }}
+                                            />
+                                        </div>
+                                        <span className="font-mono text-sm font-bold tabular-nums text-black w-10 text-right">
+                                            {progress}%
+                                        </span>
+                                    </div>
+
+                                    {/* Stage label + Time */}
+                                    <div className="flex items-center justify-between font-mono text-[11px] text-zinc-500 uppercase tracking-wider">
+                                        <span>{stageLabel}</span>
+                                        <span className="flex items-center gap-3 text-zinc-400">
+                                            <span>{elapsedSec}s elapsed</span>
+                                            {estRemaining > 0 && (
+                                                <span className="text-zinc-500">
+                                                    ~{estRemaining}s left
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ) : state === STATES.ERROR ? (
